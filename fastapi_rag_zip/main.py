@@ -102,8 +102,8 @@ async def upload_files(files: list[UploadFile] = File(...)):
         "collection_name": collection_name
     }
 
-    return {"data": data}
-    #"file_results": results
+    return data
+    #return {"data": data, "file_results": results}
 
 
 @app.post("/retrieve")
