@@ -145,3 +145,39 @@ def QA_Chain_Retrieval(query, qdrant_vectordb):
     
     except Exception as e:
         return f"Error executing retrieval chain: {str(e)}"
+
+
+def Conversational_Retrieval( query, history, retriever):
+        try:
+            template = """you are expert chatbot assistant. you have user history also but you cannot generate response other than provided context. 
+            context : {CONTEXT}
+            history: {HISTORY}
+            query:{QUESTION}
+            """
+            prompt = ChatPromptTemplate.from_template(template)
+            model = ChatOpenAI(
+                model="gpt-4o-mini", 
+                openai_api_key=os.getenv("OPENAI_API_KEY"), 
+                temperature=0
+                )
+            # retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": k = 10})
+            _filter = LLMChainFilter.from_llm(llm=model)
+            compression_retriever = ContextualCompressionRetriever(
+                base_compressor=_filter, base_retriever=retriever
+                )
+            setup_and_retrieval = RunnableParallel(
+                {"CONTEXT": compression_retriever, "HISTORY": RunnablePassthrough(), "QUESTION": RunnablePassthrough()}
+            )
+
+            output_parser = StrOutputParser()
+            rag_chain = (
+                setup_and_retrieval
+                | prompt
+                | model
+                | output_parser
+            )
+            input_dict = {"QUESTION": query, "HISTORY": history}
+            response = rag_chain.invoke(str(input_dict))
+            return response
+        except Exception as e:
+            return f"Error executing conversational retrieval chain: {str(e)}"
